@@ -74,10 +74,12 @@ function normalizeAddressList(data: unknown): Address[] {
   }
 
   return items
-    .filter(
-      (item): item is RawAddress =>
-        Boolean(item) &&
-        typeof item === "object" &&
+    .filter((item): item is RawAddress => {
+      if (!item || typeof item !== "object") {
+        return false;
+      }
+
+      return (
         "id" in item &&
         "address_type" in item &&
         "first_name" in item &&
@@ -90,7 +92,8 @@ function normalizeAddressList(data: unknown): Address[] {
         "is_default" in item &&
         "created_at" in item &&
         "updated_at" in item
-    )
+      );
+    })
     .map(normalizeAddress);
 }
 
