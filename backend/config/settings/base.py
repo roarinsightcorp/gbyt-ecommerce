@@ -267,8 +267,8 @@ PAYSTACK_CALLBACK_URL = os.getenv(
 # AUTHENTICATION COOKIES
 # ============================================================
 
-AUTH_COOKIE_SECURE = not DEBUG
-AUTH_COOKIE_SAMESITE = False  # Allow cross-site cookies for frontend/backend separation
+AUTH_COOKIE_SECURE = True
+AUTH_COOKIE_SAMESITE = "None"  # Allow cross-site cookies for frontend/backend separation
 
 AUTH_ACCESS_COOKIE_NAME = "gbyt_access"
 AUTH_REFRESH_COOKIE_NAME = "gbyt_refresh"
