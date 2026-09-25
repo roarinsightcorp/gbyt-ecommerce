@@ -4,6 +4,13 @@ from django.urls import path
 from .views import (
     AddressDetailView,
     AddressListCreateView,
+    AdminAccessView,
+    AdminCreateStaffView,
+    AdminCustomerProfileUpdateView,
+    AdminStaffProfileUpdateView,
+    AdminUserDetailView,
+    AdminUserListView,
+    AdminUserSummaryView,
     CSRFTokenView,
     LoginView,
     LogoutView,
@@ -69,4 +76,40 @@ urlpatterns = [
         AddressDetailView.as_view(),
         name="address-detail",
     ),
+    path(
+        "admin/access/",
+        AdminAccessView.as_view(),
+        name="admin-access",
+    ),
+    path(
+        "admin/users/summary/",
+        AdminUserSummaryView.as_view(),
+        name="admin-user-summary",
+    ),
+    path(
+        "admin/users/",
+        AdminUserListView.as_view(),
+        name="admin-user-list",
+    ),
+    path(
+        "admin/users/<int:pk>/",
+        AdminUserDetailView.as_view(),
+        name="admin-user-detail",
+    ),
+    path(
+        "admin/users/staff/",
+        AdminCreateStaffView.as_view(),
+        name="admin-create-staff",
+    ),
+    path(
+        "admin/users/<int:pk>/customer-profile/",
+        AdminCustomerProfileUpdateView.as_view(),
+        name="admin-customer-profile-update",
+    ),
+    path(
+        "admin/users/<int:pk>/staff-profile/",
+        AdminStaffProfileUpdateView.as_view(),
+        name="admin-staff-profile-update",
+    ),
+
 ]

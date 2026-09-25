@@ -19,6 +19,11 @@ SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
+# Authentication cookies must support the separate
+# frontend/backend Railway origins.
+AUTH_COOKIE_SECURE = True
+AUTH_COOKIE_SAMESITE = "None"
+
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
