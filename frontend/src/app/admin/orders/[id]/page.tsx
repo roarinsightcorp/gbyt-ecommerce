@@ -1,0 +1,3 @@
+"use client";
+import Link from "next/link";
+export default function Page(){return <div className="space-y-6"><Link href="/admin" className="text-sm text-[#39D5F2]">← Back to admin</Link><div><h1 className="text-2xl font-bold">Order operational detail</h1><p className="mt-2 text-sm text-white/40">This route is established and ready for its domain API workflow.</p></div><div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6"><p className="text-sm text-white/55">The page shell is intentionally conservative until the corresponding backend contract is available. Transactional operations must remain backend-authoritative.</p></div></div>}

@@ -9,6 +9,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "G-BYT Global Trading Ventures",
   description: "G-BYT Global Trading Ventures",
+  verification: {
+    google: "JZMyMGRp0D4AbiOI9vK2EGKFAVCsmDnrKtItpQEHiJ4",
+  },
 };
 
 export default function RootLayout({

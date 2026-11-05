@@ -12,6 +12,7 @@ export interface User {
   first_name: string;
   last_name: string;
   role: string;
+  is_admin: boolean;
   is_email_verified: boolean;
   phone_number: string | null;
   date_joined: string;
