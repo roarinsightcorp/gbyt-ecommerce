@@ -52,7 +52,7 @@ export interface Product {
   status: string;
   is_featured: boolean;
   is_active: boolean;
-  primary_image?: ProductMedia | null;
+  primary_image?: ProductMedia | string | null;
   has_physical_item?: boolean;
   has_digital_item?: boolean;
   metadata?: Record<string, unknown> | null;
