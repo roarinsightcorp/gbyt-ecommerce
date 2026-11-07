@@ -91,9 +91,9 @@ export default function ProductDetailPage() {
         setSelectedVariant(defaultVariant);
 
         const primaryImage =
-        response.primary_image?.url ??
-        response.media?.[0]?.url ??
-        null;
+        response.media?.find(
+          (media) => media.is_active && media.url
+        )?.url ?? null;
 
         setSelectedImage(primaryImage);
     } catch (err) {
@@ -144,23 +144,7 @@ export default function ProductDetailPage() {
             product.name,
         })) ?? [];
 
-    if (
-    product.primary_image?.url &&
-    !mediaImages.some(
-        (image) =>
-        image.url ===
-        product.primary_image?.url
-    )
-    ) {
-    mediaImages.unshift({
-        id: product.primary_image.id,
-        url: product.primary_image.url,
-        alt:
-        product.primary_image.alt_text ||
-        product.name,
-    });
-    }
-
+    
     return mediaImages;
 
 
