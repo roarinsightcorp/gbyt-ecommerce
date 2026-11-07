@@ -34,7 +34,15 @@ maximumFractionDigits: 2,
 }
 
 function getProductImage(product: Product): string | null {
-return product.primary_image?.url ?? product.media?.[0]?.url ?? null;
+  const primary = product.primary_image;
+
+  if (typeof primary === "string") {
+    return primary || null;
+  }
+
+  return primary?.url ??
+    product.media?.find((media) => media.is_active)?.url ??
+    null;
 }
 
 function ProductCard({ product }: { product: Product }) {
@@ -49,8 +57,9 @@ return ( <article className="group overflow-hidden rounded-[24px] border border-
 <img
 src={image}
 alt={
-product.primary_image?.alt_text ||
-product.name
+  typeof product.primary_image === "object" && product.primary_image
+    ? product.primary_image.alt_text || product.name
+    : product.name
 }
 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.045]"
 />
