@@ -1,3 +1,4 @@
+
 from django.urls import path
 
 from .views import (
@@ -6,8 +7,14 @@ from .views import (
     ProductDetailView,
     ProductListView,
 )
+from .storage_views import catalog_media
 
 urlpatterns = [
+    path(
+        "media/<path:key>",
+        catalog_media,
+        name="catalog-media",
+    ),
     path(
         "categories/",
         CategoryListView.as_view(),
