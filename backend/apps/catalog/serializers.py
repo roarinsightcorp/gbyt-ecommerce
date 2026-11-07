@@ -42,7 +42,10 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
 
+
 class ProductMediaSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductMedia
         fields = [
@@ -57,9 +60,27 @@ class ProductMediaSerializer(serializers.ModelSerializer):
             "metadata",
         ]
 
-        read_only_fields = [
-            "id",
-        ]
+        read_only_fields = ["id"]
+
+    def get_url(self, obj):
+        value = obj.url or ""
+
+        if value.startswith("catalog/"):
+            from django.urls import reverse
+
+            media_path = reverse(
+                "catalog-media",
+                kwargs={"key": value},
+            )
+
+            request = self.context.get("request")
+
+            if request:
+                return request.build_absolute_uri(media_path)
+
+            return media_path
+
+        return value
 
 
 class ProductOptionValueSerializer(
@@ -245,7 +266,8 @@ class ProductListSerializer(
 
         if media:
             return ProductMediaSerializer(
-                media[0]
+                media[0],
+                context=self.context,
             ).data
 
         media = getattr(
@@ -255,8 +277,9 @@ class ProductListSerializer(
         )
 
         if media:
-            return ProductMediaSerializer(
-                media[0]
+           return ProductMediaSerializer(
+                media[0],
+                context=self.context,
             ).data
 
         return None
