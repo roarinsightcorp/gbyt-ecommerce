@@ -1,4 +1,4 @@
-
+#backend/apps/accounts/serializers.py
 from django.db import transaction
 from rest_framework import serializers
 
@@ -9,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id",
+             "id",
             "email",
             "first_name",
             "last_name",
@@ -164,6 +164,7 @@ class MeSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
+            "is_admin",
             "is_email_verified",
             "date_joined",
             "customer_profile",
@@ -213,6 +214,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             "role",
             "is_active",
             "is_staff",
+            "is_admin",
             "is_superuser",
             "is_email_verified",
             "date_joined",
@@ -246,6 +248,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
             "role",
             "is_active",
             "is_staff",
+            "is_admin",
             "is_superuser",
             "is_email_verified",
             "date_joined",

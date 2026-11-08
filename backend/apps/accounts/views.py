@@ -35,7 +35,7 @@ from .serializers import (
     RegisterSerializer,
 )
 
-from .permissions import IsSuperAdmin
+from .permissions import IsAdmin, IsSuperAdmin
 
 ACCESS_COOKIE_NAME = "gbyt_access"
 REFRESH_COOKIE_NAME = "gbyt_refresh"
@@ -410,14 +410,16 @@ class AdminAccessView(APIView):
     the administration interface.
     """
 
-    permission_classes = [IsSuperAdmin]
+    permission_classes = [IsAdmin]
     authentication_classes = [CookieJWTAuthentication]
 
     def get(self, request):
         return Response(
             {
-                "is_admin": True,
-                "is_super_admin": True,
+                "is_admin": bool(
+                    request.user.is_admin or request.user.is_superuser
+                ),
+                "is_super_admin": bool(request.user.is_superuser),
                 "role": request.user.role,
             }
         )
@@ -687,139 +689,6 @@ class AdminStaffProfileUpdateView(generics.UpdateAPIView):
                 "This staff member does not have a staff profile."
             )
 
-class AdminCreateStaffView(
-    generics.CreateAPIView
-):
-    """
-    Create a staff account.
-
-    Only super administrators may create staff.
-    """
-
-    permission_classes = [IsSuperAdmin]
-    authentication_classes = [
-        CookieJWTAuthentication
-    ]
-
-    def create(
-        self,
-        request,
-        *args,
-        **kwargs,
-    ):
-        from django.db import transaction
-        from rest_framework.exceptions import (
-            ValidationError,
-        )
-
-        email = (
-            request.data.get("email", "")
-            .strip()
-            .lower()
-        )
-
-        password = request.data.get(
-            "password",
-            "",
-        )
-
-        first_name = request.data.get(
-            "first_name",
-            "",
-        ).strip()
-
-        last_name = request.data.get(
-            "last_name",
-            "",
-        ).strip()
-
-        job_title = request.data.get(
-            "job_title",
-            "",
-        ).strip()
-
-        employee_id = request.data.get(
-            "employee_id"
-        )
-
-        phone_number = request.data.get(
-            "phone_number",
-            "",
-        ).strip()
-
-        if not email:
-            raise ValidationError(
-                {"email": "Email is required."}
-            )
-
-        if not password:
-            raise ValidationError(
-                {"password": "Password is required."}
-            )
-
-        if len(password) < 8:
-            raise ValidationError(
-                {
-                    "password": (
-                        "Password must be at least "
-                        "8 characters."
-                    )
-                }
-            )
-
-        if User.objects.filter(
-            email=email
-        ).exists():
-            raise ValidationError(
-                {
-                    "email": (
-                        "A user with this email "
-                        "already exists."
-                    )
-                }
-            )
-
-        if employee_id:
-            employee_id = str(
-                employee_id
-            ).strip()
-
-            if StaffProfile.objects.filter(
-                employee_id=employee_id
-            ).exists():
-                raise ValidationError(
-                    {
-                        "employee_id": (
-                            "This employee ID is "
-                            "already in use."
-                        )
-                    }
-                )
-
-        with transaction.atomic():
-            user = User.objects.create_user(
-                email=email,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                role=User.Role.STAFF,
-                is_staff=True,
-                is_active=True,
-            )
-
-            StaffProfile.objects.create(
-                user=user,
-                job_title=job_title,
-                employee_id=employee_id,
-                phone_number=phone_number,
-            )
-
-        return Response(
-            AdminUserDetailSerializer(
-                user
-            ).data,
-            status=status.HTTP_201_CREATED,
-        )
 class AdminCreateStaffView(generics.CreateAPIView):
     """
     Create a staff account.
@@ -917,12 +786,19 @@ class AdminCreateStaffView(generics.CreateAPIView):
             )
 
         with transaction.atomic():
-            # Lock the current super-admin row while generating
-            # the employee ID. This prevents two simultaneous
-            # staff creations from receiving the same ID.
-            if request.user.pk:
-                User.objects.select_for_update().get(
-                    pk=request.user.pk
+            # Lock one shared user row so staff creation requests
+            # from different super-admins are serialized.
+            # The lock remains held until this transaction commits.
+            locked_user = (
+                User.objects
+                .select_for_update()
+                .order_by("pk")
+                .first()
+            )
+
+            if locked_user is None:
+                raise ValidationError(
+                    {"detail": "Unable to generate a staff employee ID."}
                 )
 
             prefix = "GBT-STAFF-"

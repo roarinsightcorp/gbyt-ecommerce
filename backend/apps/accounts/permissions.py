@@ -2,15 +2,7 @@ from rest_framework.permissions import BasePermission
 
 
 class IsStaffUser(BasePermission):
-    """
-    Allows access to authenticated staff members.
-
-    Staff users have:
-        role = STAFF
-        is_staff = True
-
-    Customers are denied.
-    """
+    """Allows authenticated staff members."""
 
     message = "Staff access is required."
 
@@ -25,15 +17,25 @@ class IsStaffUser(BasePermission):
         )
 
 
-class IsSuperAdmin(BasePermission):
-    """
-    Allows access only to Django superusers.
+class IsAdmin(BasePermission):
+    """Allows ordinary administrators and super administrators."""
 
-    Super admins are represented by:
-        role = STAFF
-        is_staff = True
-        is_superuser = True
-    """
+    message = "Administrator access is required."
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        return bool(
+            user
+            and user.is_authenticated
+            and user.is_staff
+            and user.role == "STAFF"
+            and (user.is_admin or user.is_superuser)
+        )
+
+
+class IsSuperAdmin(BasePermission):
+    """Allows only Django super administrators."""
 
     message = "Super administrator access is required."
 
@@ -43,7 +45,7 @@ class IsSuperAdmin(BasePermission):
         return bool(
             user
             and user.is_authenticated
-            and user.is_superuser
             and user.is_staff
             and user.role == "STAFF"
+            and user.is_superuser
         )

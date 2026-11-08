@@ -39,6 +39,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
     )
 
+    is_admin = models.BooleanField(
+        default=False,
+    )
+
     is_superuser = models.BooleanField(
         default=False,
     )

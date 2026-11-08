@@ -264,6 +264,30 @@ PAYSTACK_CALLBACK_URL = os.getenv(
 
 
 # ============================================================
+# BUNNY STORAGE / CDN
+# ============================================================
+
+BUNNY_STORAGE_ZONE = os.getenv(
+    "BUNNY_STORAGE_ZONE",
+    "",
+)
+
+BUNNY_STORAGE_ACCESS_KEY = os.getenv(
+    "BUNNY_STORAGE_ACCESS_KEY",
+    "",
+)
+
+BUNNY_STORAGE_ENDPOINT = os.getenv(
+    "BUNNY_STORAGE_ENDPOINT",
+    "https://storage.bunnycdn.com",
+)
+
+BUNNY_CDN_HOSTNAME = os.getenv(
+    "BUNNY_CDN_HOSTNAME",
+    "",
+)
+
+# ============================================================
 # AUTHENTICATION COOKIES
 # ============================================================
 
