@@ -9,6 +9,7 @@ from .views import (
     RemoveStockView,
     ReleaseStockView,
     ReserveStockView,
+    InventoryItemDetailView,
 )
 
 
@@ -59,5 +60,10 @@ urlpatterns = [
         "inventory/adjust/",
         AdjustStockView.as_view(),
         name="inventory-adjust",
+    ),
+    path(
+        "inventory/items/<int:pk>/",
+        InventoryItemDetailView.as_view(),
+        name="inventory-item-detail",
     ),
 ]

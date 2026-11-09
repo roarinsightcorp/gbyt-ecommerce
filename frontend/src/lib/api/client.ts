@@ -136,6 +136,9 @@ export async function apiRequest<T>(
     ...requestOptions
   } = options;
 
+  // Retained for API compatibility; authentication uses HttpOnly cookies.
+  void auth;
+
   const method =
     requestOptions.method?.toUpperCase() || "GET";
 
@@ -294,4 +297,3 @@ export function apiDelete<T>(
     }
   );
 }
-

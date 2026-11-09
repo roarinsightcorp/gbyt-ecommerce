@@ -1,6 +1,6 @@
 from django.db.models import F
 from rest_framework import status
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -371,3 +371,16 @@ class AdjustStockView(APIView):
                 ).data,
             }
         )
+
+class InventoryItemDetailView(RetrieveAPIView):
+    queryset = (
+        InventoryItem.objects
+        .select_related(
+            "variant",
+            "variant__product",
+            "location",
+        )
+        .filter(is_active=True)
+    )
+    serializer_class = InventoryItemSerializer
+    permission_classes = [IsAuthenticated, IsInventoryStaff]

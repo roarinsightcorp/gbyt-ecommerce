@@ -1,253 +1,58 @@
-'''from django.db import transaction
+
 from django.core.exceptions import ValidationError
-
-from .models import InventoryItem, InventoryMovement
-
-
-@transaction.atomic
-def receive_stock(
-    inventory_item,
-    quantity,
-    performed_by=None,
-    reference="",
-    notes="",
-):
-    if quantity <= 0:
-        raise ValidationError("Received quantity must be greater than zero.")
-
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item.pk)
-    )
-
-    inventory_item.quantity += quantity
-    inventory_item.save(update_fields=["quantity", "updated_at"])
-
-    movement = InventoryMovement.objects.create(
-        inventory_item=inventory_item,
-        movement_type=InventoryMovement.MovementType.STOCK_IN,
-        quantity=quantity,
-        performed_by=performed_by,
-        reference=reference,
-        notes=notes,
-    )
-
-    return inventory_item, movement
-
-
-@transaction.atomic
-def remove_stock(
-    inventory_item,
-    quantity,
-    performed_by=None,
-    reference="",
-    notes="",
-):
-    if quantity <= 0:
-        raise ValidationError("Removed quantity must be greater than zero.")
-
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item.pk)
-    )
-
-    if quantity > inventory_item.available_quantity:
-        raise ValidationError(
-            f"Insufficient available stock. "
-            f"Available: {inventory_item.available_quantity}."
-        )
-
-    inventory_item.quantity -= quantity
-    inventory_item.save(update_fields=["quantity", "updated_at"])
-
-    movement = InventoryMovement.objects.create(
-        inventory_item=inventory_item,
-        movement_type=InventoryMovement.MovementType.STOCK_OUT,
-        quantity=-quantity,
-        performed_by=performed_by,
-        reference=reference,
-        notes=notes,
-    )
-
-    return inventory_item, movement
-
-
-@transaction.atomic
-def adjust_stock(
-    inventory_item,
-    new_quantity,
-    performed_by=None,
-    reference="",
-    notes="",
-):
-    if new_quantity < 0:
-        raise ValidationError(
-            "Inventory quantity cannot be negative."
-        )
-
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item.pk)
-    )
-
-    if inventory_item.reserved_quantity > new_quantity:
-        raise ValidationError(
-            "New quantity cannot be lower than reserved quantity."
-        )
-
-    difference = new_quantity - inventory_item.quantity
-
-    inventory_item.quantity = new_quantity
-    inventory_item.save(update_fields=["quantity", "updated_at"])
-
-    movement = InventoryMovement.objects.create(
-        inventory_item=inventory_item,
-        movement_type=InventoryMovement.MovementType.ADJUSTMENT,
-        quantity=difference,
-        performed_by=performed_by,
-        reference=reference,
-        notes=notes,
-    )
-
-    return inventory_item, movement
-
-
-@transaction.atomic
-def reserve_stock(
-    inventory_item,
-    quantity,
-    performed_by=None,
-    reference="",
-    notes="",
-):
-    if quantity <= 0:
-        raise ValidationError(
-            "Reserved quantity must be greater than zero."
-        )
-
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item.pk)
-    )
-
-    if quantity > inventory_item.available_quantity:
-        raise ValidationError(
-            f"Insufficient available stock. "
-            f"Available: {inventory_item.available_quantity}."
-        )
-
-    inventory_item.reserved_quantity += quantity
-
-    inventory_item.save(
-        update_fields=[
-            "reserved_quantity",
-            "updated_at",
-        ]
-    )
-
-    movement = InventoryMovement.objects.create(
-        inventory_item=inventory_item,
-        movement_type=InventoryMovement.MovementType.RESERVATION,
-        quantity=quantity,
-        performed_by=performed_by,
-        reference=reference,
-        notes=notes,
-    )
-
-    return inventory_item, movement
-
-
-@transaction.atomic
-def release_stock(
-    
-    inventory_item,
-    quantity,
-    performed_by=None,
-    reference="",
-    notes="",
-):
-    if quantity <= 0:
-        raise ValidationError(
-            "Released quantity must be greater than zero."
-        )
-
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item.pk)
-    )
-
-    if quantity > inventory_item.reserved_quantity:
-        raise ValidationError(
-            f"Cannot release {quantity} units. "
-            f"Only {inventory_item.reserved_quantity} "
-            f"units are reserved."
-        )
-
-    inventory_item.reserved_quantity -= quantity
-
-    inventory_item.save(
-        update_fields=[
-            "reserved_quantity",
-            "updated_at",
-        ]
-    )
-
-    movement = InventoryMovement.objects.create(
-        inventory_item=inventory_item,
-        movement_type=InventoryMovement.MovementType.RELEASE,
-        quantity=-quantity,
-        performed_by=performed_by,
-        reference=reference,
-        notes=notes,
-    )
-
-    return inventory_item, movement'''
-    
-    
 from django.db import transaction
-from django.core.exceptions import ValidationError
 
 from .models import InventoryItem, InventoryMovement
 
 
-@transaction.atomic
-def receive_stock(
-    inventory_item_id,
-    quantity,
-    reference="",
-    notes="",
-    performed_by=None,
-):
+def _lock_inventory_item(inventory_item=None, inventory_item_id=None):
     """
-    Add physical stock to an inventory item.
-    Creates a STOCK_IN movement.
+    Retrieve and lock an inventory item.
+
+    Supports both:
+    - inventory_item=<InventoryItem instance>
+    - inventory_item_id=<primary key>
     """
+    if inventory_item is not None:
+        inventory_item_id = inventory_item.pk
 
-    if quantity <= 0:
-        raise ValidationError("Quantity must be greater than zero.")
+    if inventory_item_id is None:
+        raise ValidationError("An inventory item is required.")
 
-    inventory_item = (
+    return (
         InventoryItem.objects
         .select_for_update()
         .get(pk=inventory_item_id)
     )
 
-    inventory_item.quantity += quantity
 
-    inventory_item.save(
-        update_fields=[
-            "quantity",
-            "updated_at",
-        ]
+@transaction.atomic
+def receive_stock(
+    inventory_item_id=None,
+    quantity=None,
+    reference="",
+    notes="",
+    performed_by=None,
+    *,
+    inventory_item=None,
+):
+    """Add physical stock and create a STOCK_IN movement."""
+
+    if quantity is None or quantity <= 0:
+        raise ValidationError(
+            "Received quantity must be greater than zero."
+        )
+
+    item = _lock_inventory_item(
+        inventory_item=inventory_item,
+        inventory_item_id=inventory_item_id,
     )
 
-    InventoryMovement.objects.create(
-        inventory_item=inventory_item,
+    item.quantity += quantity
+    item.save(update_fields=["quantity", "updated_at"])
+
+    movement = InventoryMovement.objects.create(
+        inventory_item=item,
         movement_type=InventoryMovement.MovementType.STOCK_IN,
         quantity=quantity,
         reference=reference,
@@ -255,49 +60,43 @@ def receive_stock(
         performed_by=performed_by,
     )
 
-    return inventory_item
+    return item, movement
 
 
 @transaction.atomic
 def remove_stock(
-    inventory_item_id,
-    quantity,
+    inventory_item_id=None,
+    quantity=None,
     reference="",
     notes="",
     performed_by=None,
+    *,
+    inventory_item=None,
 ):
-    """
-    Remove physical stock from inventory.
-    Creates a STOCK_OUT movement.
-    """
+    """Remove available physical stock and create a STOCK_OUT movement."""
 
-    if quantity <= 0:
-        raise ValidationError("Quantity must be greater than zero.")
+    if quantity is None or quantity <= 0:
+        raise ValidationError(
+            "Removed quantity must be greater than zero."
+        )
 
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item_id)
+    item = _lock_inventory_item(
+        inventory_item=inventory_item,
+        inventory_item_id=inventory_item_id,
     )
 
-    if inventory_item.available_quantity < quantity:
+    if quantity > item.available_quantity:
         raise ValidationError(
             f"Insufficient available stock. "
-            f"Available: {inventory_item.available_quantity}, "
+            f"Available: {item.available_quantity}, "
             f"requested: {quantity}."
         )
 
-    inventory_item.quantity -= quantity
+    item.quantity -= quantity
+    item.save(update_fields=["quantity", "updated_at"])
 
-    inventory_item.save(
-        update_fields=[
-            "quantity",
-            "updated_at",
-        ]
-    )
-
-    InventoryMovement.objects.create(
-        inventory_item=inventory_item,
+    movement = InventoryMovement.objects.create(
+        inventory_item=item,
         movement_type=InventoryMovement.MovementType.STOCK_OUT,
         quantity=-quantity,
         reference=reference,
@@ -305,56 +104,51 @@ def remove_stock(
         performed_by=performed_by,
     )
 
-    return inventory_item
+    return item, movement
 
 
 @transaction.atomic
 def adjust_stock(
-    inventory_item_id,
-    new_quantity,
+    inventory_item_id=None,
+    new_quantity=None,
     reference="",
     notes="",
     performed_by=None,
+    *,
+    inventory_item=None,
 ):
     """
-    Set inventory quantity to an exact value.
+    Set physical stock to an absolute quantity.
 
-    The movement quantity represents the difference between
+    Movement quantity records the difference between
     the new quantity and the previous quantity.
     """
 
-    if new_quantity < 0:
+    if new_quantity is None or new_quantity < 0:
         raise ValidationError(
             "Inventory quantity cannot be negative."
         )
 
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item_id)
+    item = _lock_inventory_item(
+        inventory_item=inventory_item,
+        inventory_item_id=inventory_item_id,
     )
 
-    old_quantity = inventory_item.quantity
-
-    if new_quantity < inventory_item.reserved_quantity:
+    if new_quantity < item.reserved_quantity:
         raise ValidationError(
             "New quantity cannot be less than reserved quantity."
         )
 
-    difference = new_quantity - old_quantity
+    difference = new_quantity - item.quantity
 
-    inventory_item.quantity = new_quantity
+    item.quantity = new_quantity
+    item.save(update_fields=["quantity", "updated_at"])
 
-    inventory_item.save(
-        update_fields=[
-            "quantity",
-            "updated_at",
-        ]
-    )
+    movement = None
 
     if difference != 0:
-        InventoryMovement.objects.create(
-            inventory_item=inventory_item,
+        movement = InventoryMovement.objects.create(
+            inventory_item=item,
             movement_type=InventoryMovement.MovementType.ADJUSTMENT,
             quantity=difference,
             reference=reference,
@@ -362,53 +156,48 @@ def adjust_stock(
             performed_by=performed_by,
         )
 
-    return inventory_item
+    return item, movement
 
 
 @transaction.atomic
 def reserve_stock(
-    inventory_item_id,
-    quantity,
+    inventory_item_id=None,
+    quantity=None,
     reference="",
     notes="",
     performed_by=None,
+    *,
+    inventory_item=None,
 ):
     """
-    Reserve available stock for an order.
-
-    This does NOT reduce physical quantity.
-    It only increases reserved_quantity.
-
+    Reserve available stock without reducing physical quantity.
     Creates a RESERVATION movement.
     """
 
-    if quantity <= 0:
-        raise ValidationError("Quantity must be greater than zero.")
+    if quantity is None or quantity <= 0:
+        raise ValidationError(
+            "Reserved quantity must be greater than zero."
+        )
 
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item_id)
+    item = _lock_inventory_item(
+        inventory_item=inventory_item,
+        inventory_item_id=inventory_item_id,
     )
 
-    if inventory_item.available_quantity < quantity:
+    if quantity > item.available_quantity:
         raise ValidationError(
             f"Insufficient available stock. "
-            f"Available: {inventory_item.available_quantity}, "
+            f"Available: {item.available_quantity}, "
             f"requested: {quantity}."
         )
 
-    inventory_item.reserved_quantity += quantity
-
-    inventory_item.save(
-        update_fields=[
-            "reserved_quantity",
-            "updated_at",
-        ]
+    item.reserved_quantity += quantity
+    item.save(
+        update_fields=["reserved_quantity", "updated_at"]
     )
 
-    InventoryMovement.objects.create(
-        inventory_item=inventory_item,
+    movement = InventoryMovement.objects.create(
+        inventory_item=item,
         movement_type=InventoryMovement.MovementType.RESERVATION,
         quantity=quantity,
         reference=reference,
@@ -416,53 +205,49 @@ def reserve_stock(
         performed_by=performed_by,
     )
 
-    return inventory_item
+    return item, movement
 
 
 @transaction.atomic
 def release_stock(
-    inventory_item_id,
-    quantity,
+    inventory_item_id=None,
+    quantity=None,
     reference="",
     notes="",
     performed_by=None,
+    *,
+    inventory_item=None,
 ):
     """
     Release previously reserved stock.
-
     Physical quantity remains unchanged.
-    Only reserved_quantity is reduced.
-
     Creates a RELEASE movement.
     """
 
-    if quantity <= 0:
-        raise ValidationError("Quantity must be greater than zero.")
+    if quantity is None or quantity <= 0:
+        raise ValidationError(
+            "Released quantity must be greater than zero."
+        )
 
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item_id)
+    item = _lock_inventory_item(
+        inventory_item=inventory_item,
+        inventory_item_id=inventory_item_id,
     )
 
-    if inventory_item.reserved_quantity < quantity:
+    if quantity > item.reserved_quantity:
         raise ValidationError(
             f"Cannot release more stock than is reserved. "
-            f"Reserved: {inventory_item.reserved_quantity}, "
+            f"Reserved: {item.reserved_quantity}, "
             f"requested: {quantity}."
         )
 
-    inventory_item.reserved_quantity -= quantity
-
-    inventory_item.save(
-        update_fields=[
-            "reserved_quantity",
-            "updated_at",
-        ]
+    item.reserved_quantity -= quantity
+    item.save(
+        update_fields=["reserved_quantity", "updated_at"]
     )
 
-    InventoryMovement.objects.create(
-        inventory_item=inventory_item,
+    movement = InventoryMovement.objects.create(
+        inventory_item=item,
         movement_type=InventoryMovement.MovementType.RELEASE,
         quantity=-quantity,
         reference=reference,
@@ -470,7 +255,7 @@ def release_stock(
         performed_by=performed_by,
     )
 
-    return inventory_item
+    return item, movement
 
 
 @transaction.atomic
@@ -484,42 +269,36 @@ def finalize_reserved_stock(
     """
     Convert reserved stock into sold/removed stock.
 
-    This is the important reservation -> sale transition:
-
-        reserved_quantity - quantity
-        quantity          - quantity
-        STOCK_OUT movement = -quantity
-
-    Used after successful payment.
+    This preserves the existing order-payment service contract.
     """
 
     if quantity <= 0:
-        raise ValidationError("Quantity must be greater than zero.")
+        raise ValidationError(
+            "Quantity must be greater than zero."
+        )
 
-    inventory_item = (
-        InventoryItem.objects
-        .select_for_update()
-        .get(pk=inventory_item_id)
+    item = _lock_inventory_item(
+        inventory_item_id=inventory_item_id,
     )
 
-    if inventory_item.reserved_quantity < quantity:
+    if item.reserved_quantity < quantity:
         raise ValidationError(
             f"Cannot finalize more stock than is reserved. "
-            f"Reserved: {inventory_item.reserved_quantity}, "
+            f"Reserved: {item.reserved_quantity}, "
             f"requested: {quantity}."
         )
 
-    if inventory_item.quantity < quantity:
+    if item.quantity < quantity:
         raise ValidationError(
             f"Cannot finalize more stock than exists. "
-            f"Quantity: {inventory_item.quantity}, "
+            f"Quantity: {item.quantity}, "
             f"requested: {quantity}."
         )
 
-    inventory_item.quantity -= quantity
-    inventory_item.reserved_quantity -= quantity
+    item.quantity -= quantity
+    item.reserved_quantity -= quantity
 
-    inventory_item.save(
+    item.save(
         update_fields=[
             "quantity",
             "reserved_quantity",
@@ -527,9 +306,8 @@ def finalize_reserved_stock(
         ]
     )
 
-    # Audit the actual stock leaving the inventory.
     InventoryMovement.objects.create(
-        inventory_item=inventory_item,
+        inventory_item=item,
         movement_type=InventoryMovement.MovementType.STOCK_OUT,
         quantity=-quantity,
         reference=reference,
@@ -537,4 +315,4 @@ def finalize_reserved_stock(
         performed_by=performed_by,
     )
 
-    return inventory_item
+    return item
